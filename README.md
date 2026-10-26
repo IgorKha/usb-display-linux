@@ -61,6 +61,20 @@ Environment variable overrides are not supported.
 
 ## Displayed Data
 
+Example interface page (160x80 landscape; font sizes and colors are not represented):
+
+```text
++--------------------------+
+| en0                      |
+|                          |
+| UP   LINK YES        2/5 |
+| 192.168.1.42             |
+| 02:1a:2b:3c:4d:5e        |
++--------------------------+
+```
+
+`2/5` is the current page number and total page count.
+
 The ordered cycle starts with the OS, then visits every non-loopback interface,
 including virtual, administratively down, and unaddressed interfaces. IPv6 is not
 shown. IPv4 link-local addresses (`169.254.x.x`) are retained. Multiple IPv4

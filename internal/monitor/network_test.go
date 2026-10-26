@@ -10,7 +10,7 @@ func TestCollectInterfaces(t *testing.T) {
 	interfaces := []net.Interface{
 		{Name: "lo0", Flags: net.FlagLoopback | net.FlagUp},
 		{Name: "vpn0"},
-		{Name: "en0", Flags: net.FlagUp},
+		{Name: "en0", Flags: net.FlagUp, HardwareAddr: net.HardwareAddr{0x02, 0x1a, 0x2b, 0x3c, 0x4d, 0x5e}},
 		{Name: "gone0"},
 	}
 	addresses := func(iface net.Interface) ([]net.Addr, error) {
@@ -34,6 +34,9 @@ func TestCollectInterfaces(t *testing.T) {
 	got := collectInterfaces(interfaces, addresses, map[string]Link{"en0": LinkYes})
 	if len(got) != 3 || got[0].Name != "en0" || !got[0].Up || got[0].Link != LinkYes {
 		t.Fatalf("interfaces = %+v", got)
+	}
+	if got[0].HardwareAddr != "02:1a:2b:3c:4d:5e" || got[2].HardwareAddr != "" {
+		t.Fatalf("hardware addresses = %+v", got)
 	}
 	want := []string{"10.0.0.2", "10.0.0.10", "169.254.2.3"}
 	for index, address := range got[0].Addresses {

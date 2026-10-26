@@ -17,12 +17,13 @@ import (
 )
 
 type Page struct {
-	Key     string
-	Title   []string
-	Lines   []string
-	Status  string
-	Address string
-	Up      bool
+	Key          string
+	Title        []string
+	Lines        []string
+	Status       string
+	Address      string
+	HardwareAddr string
+	Up           bool
 }
 
 type Renderer struct {
@@ -88,15 +89,27 @@ func (renderer *Renderer) Pages(osName string, interfaces []monitor.Interface) [
 			state = "UP"
 		}
 		titles := wrap(iface.Name, renderer.normal)
+		hardwareAddr := iface.HardwareAddr
+		if hardwareAddr == "" {
+			hardwareAddr = "MAC ?"
+		}
+		hardwareLines := wrap(hardwareAddr, renderer.medium)
 		for _, address := range addresses {
 			for start := 0; start < len(titles); start += 2 {
-				pages = append(pages, Page{
-					Key:     fmt.Sprintf("if:%s:%s:%d", iface.Name, address, start),
-					Title:   titles[start:min(start+2, len(titles))],
-					Status:  state + "   LINK " + iface.Link.String(),
-					Address: address,
-					Up:      iface.Up,
-				})
+				for part, hardwareLine := range hardwareLines {
+					key := fmt.Sprintf("if:%s:%s:%d", iface.Name, address, start)
+					if part > 0 {
+						key += fmt.Sprintf(":mac:%d", part)
+					}
+					pages = append(pages, Page{
+						Key:          key,
+						Title:        titles[start:min(start+2, len(titles))],
+						Status:       state + "   LINK " + iface.Link.String(),
+						Address:      address,
+						HardwareAddr: hardwareLine,
+						Up:           iface.Up,
+					})
+				}
 			}
 		}
 	}
@@ -122,13 +135,24 @@ func (renderer *Renderer) Render(page Page, position, total int) *image.RGBA {
 		if page.Up {
 			stateColor = color.RGBA{R: 128, G: 220, B: 137, A: 255}
 		}
-		text(renderer.normal, 43, page.Status, stateColor)
-		text(renderer.large, 63, page.Address, white)
+		text(renderer.normal, 41, page.Status, stateColor)
+		text(renderer.large, 60, page.Address, white)
 	}
 	for index, line := range page.Lines {
 		text(renderer.medium, 34+index*16, line, white)
 	}
-	text(renderer.small, 77, fmt.Sprintf("%d / %d", position+1, total), accent)
+	counter := fmt.Sprintf("%d / %d", position+1, total)
+	if page.HardwareAddr != "" {
+		text(renderer.medium, 78, page.HardwareAddr, white)
+		counter = fmt.Sprintf("%d/%d", position+1, total)
+		drawer := font.Drawer{
+			Dst: frame, Src: image.NewUniform(accent), Face: renderer.small,
+			Dot: fixed.P(Width-4-font.MeasureString(renderer.small, counter).Ceil(), 41),
+		}
+		drawer.DrawString(counter)
+	} else {
+		text(renderer.small, 77, counter, accent)
+	}
 	return frame
 }
 
@@ -143,6 +167,10 @@ func (renderer *Renderer) TestPattern() *image.RGBA {
 }
 
 func wrap(value string, face font.Face) []string {
+	return wrapWidth(value, face, Width-8)
+}
+
+func wrapWidth(value string, face font.Face, width int) []string {
 	value = strings.Map(func(character rune) rune {
 		if unicode.IsControl(character) {
 			return ' '
@@ -153,7 +181,7 @@ func wrap(value string, face font.Face) []string {
 	line := ""
 	for _, character := range value {
 		candidate := line + string(character)
-		if line != "" && font.MeasureString(face, candidate) > fixed.I(Width-8) {
+		if line != "" && font.MeasureString(face, candidate) > fixed.I(width) {
 			lines = append(lines, line)
 			line = ""
 		}

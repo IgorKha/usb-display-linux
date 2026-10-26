@@ -1,7 +1,7 @@
 # USB Display
 
 A small Go CLI for the WeAct Display FS 0.96 inch (80x160, USB CDC).
-Displays OS release information and IPv4 addresses in landscape orientation.
+Displays OS release information, IPv4 addresses, and MAC addresses in landscape orientation.
 Linux and macOS are the implementation targets. Windows is not supported yet.
 
 ## Build and Run
@@ -66,6 +66,10 @@ including virtual, administratively down, and unaddressed interfaces. IPv6 is no
 shown. IPv4 link-local addresses (`169.254.x.x`) are retained. Multiple IPv4
 addresses receive separate pages. Interfaces without IPv4 show `NO IPv4`.
 An address collection failure shows `DATA ERROR`, not `NO IPv4`.
+
+Each interface page shows its current MAC address in the bottom row, or `MAC ?`
+when the OS reports no hardware address. This can differ from the factory address
+when MAC randomization is enabled. Long hardware addresses continue onto additional pages.
 
 `UP`/`DOWN` is the administrative state, not proof of a connection. `LINK YES` or
 `LINK NO` reports carrier for Ethernet and connection state for Wi-Fi. `LINK ?`

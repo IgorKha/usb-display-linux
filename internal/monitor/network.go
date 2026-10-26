@@ -31,6 +31,7 @@ func (link Link) String() string {
 
 type Interface struct {
 	Name         string
+	HardwareAddr string
 	Up           bool
 	Link         Link
 	Addresses    []netip.Addr
@@ -54,7 +55,13 @@ func collectInterfaces(interfaces []net.Interface, addresses func(net.Interface)
 		if iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-		item := Interface{Name: iface.Name, Up: iface.Flags&net.FlagUp != 0, Link: links[iface.Name], Addresses: []netip.Addr{}}
+		item := Interface{
+			Name:         iface.Name,
+			HardwareAddr: iface.HardwareAddr.String(),
+			Up:           iface.Flags&net.FlagUp != 0,
+			Link:         links[iface.Name],
+			Addresses:    []netip.Addr{},
+		}
 		values, err := addresses(iface)
 		item.AddressError = err != nil
 		for _, value := range values {

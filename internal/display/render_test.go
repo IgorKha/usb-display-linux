@@ -99,14 +99,63 @@ func TestRenderBounds(t *testing.T) {
 	if addressBounds.Max.Y+fixed.I(60) >= macBounds.Min.Y+fixed.I(78) {
 		t.Fatal("MAC overlaps IPv4")
 	}
-	statusWidth := font.MeasureString(renderer.normal, "DOWN   LINK YES")
+	statusWidth := font.MeasureString(renderer.normal, "IPv4 STATIC?")
 	counterWidth := font.MeasureString(renderer.small, "999/999")
 	if statusWidth+counterWidth > fixed.I(Width-12) {
-		t.Fatal("status overlaps page counter")
+		t.Fatal("address source overlaps page counter")
 	}
 	joined := strings.Join(wrap(longName, renderer.normal), "")
 	if joined != longName {
 		t.Fatal("long interface name lost characters")
+	}
+}
+
+func TestAddressSourcePages(t *testing.T) {
+	renderer := testRenderer(t)
+	dhcp := netip.MustParseAddr("192.0.2.1")
+	static := netip.MustParseAddr("192.0.2.2")
+	unknown := netip.MustParseAddr("169.254.1.2")
+	name := strings.Repeat("long-interface-name", 3)
+	pages := renderer.Pages("Linux", []monitor.Interface{{
+		Name:      name,
+		Addresses: []netip.Addr{dhcp, static, unknown},
+		Sources: map[netip.Addr]monitor.AddressSource{
+			dhcp: monitor.SourceDHCP, static: monitor.SourceLikelyStatic,
+		},
+	}})
+	want := map[string]string{dhcp.String(): "DHCP", static.String(): "STATIC?", unknown.String(): "?"}
+	title := ""
+	for _, page := range pages[1:] {
+		if len(page.Title) != 1 || page.Source != want[page.Address] {
+			t.Fatalf("source page = %+v", page)
+		}
+		if page.Address == dhcp.String() {
+			title += page.Title[0]
+		}
+	}
+	if title != name {
+		t.Fatal("interface name lost during pagination")
+	}
+	frame := renderer.Render(pages[1], 1, len(pages))
+	without := pages[1]
+	without.Source = ""
+	if bytes.Equal(frame.Pix, renderer.Render(without, 1, len(pages)).Pix) {
+		t.Fatal("address source was not rendered")
+	}
+	for _, rows := range []struct {
+		name, upper, lower           string
+		upperBaseline, lowerBaseline int
+	}{
+		{name: "title and source", upper: "en0", lower: "IPv4 STATIC?", upperBaseline: 13, lowerBaseline: 27},
+		{name: "source and status", upper: "IPv4 STATIC?", lower: "DOWN   LINK YES", upperBaseline: 27, lowerBaseline: 41},
+	} {
+		t.Run(rows.name, func(t *testing.T) {
+			upper, _ := font.BoundString(renderer.normal, rows.upper)
+			lower, _ := font.BoundString(renderer.normal, rows.lower)
+			if upper.Max.Y+fixed.I(rows.upperBaseline) >= lower.Min.Y+fixed.I(rows.lowerBaseline) {
+				t.Fatal("rows overlap")
+			}
+		})
 	}
 }
 

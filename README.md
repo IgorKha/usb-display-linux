@@ -21,6 +21,7 @@ when using a persistent Linux `/dev/serial/by-id/...` path.
 ```sh
 ./usb-display --port /dev/cu.usbmodemaddef39a51ab1
 ./usb-display --port /dev/ttyACM0 --interval 5s
+./usb-display --rotation 180
 ./usb-display --test
 ./usb-display --version
 ```
@@ -29,6 +30,12 @@ when using a persistent Linux `/dev/serial/by-id/...` path.
 Stop normal operation with Ctrl-C. The backlight is switched off and the serial port
 is released on exit. Disconnecting the display causes an error; reconnect it and
 restart the program. Other software must not own the serial port.
+
+`--rotation 180` turns every frame upside down, including `--test`, without
+changing the 160x80 layout. The default is `0`; only `0` and `180` are accepted.
+This is manual rotation, not sensor-driven auto-rotation. The checked official
+0.96-inch driver exposes orientation commands but no position-sensor command;
+auto-rotation on the Pro hardware is not yet established.
 
 On Linux, grant your user access to the serial device according to your distribution
 (commonly membership in `dialout` or `uucp`, followed by logging in again).
@@ -48,6 +55,7 @@ are errors. Configuration is read once at startup, not watched.
 interval = "3s"
 port = "auto"
 brightness = 30
+rotation = 0
 ```
 
 ```sh
@@ -66,8 +74,8 @@ Example interface page (160x80 landscape; font sizes and colors are not represen
 ```text
 +--------------------------+
 | en0                      |
-|                          |
-| UP   LINK YES        2/5 |
+| IPv4 DHCP            2/5 |
+| UP   LINK YES            |
 | 192.168.1.42             |
 | 02:1a:2b:3c:4d:5e        |
 +--------------------------+
@@ -80,6 +88,22 @@ including virtual, administratively down, and unaddressed interfaces. IPv6 is no
 shown. IPv4 link-local addresses (`169.254.x.x`) are retained. Multiple IPv4
 addresses receive separate pages. Interfaces without IPv4 show `NO IPv4`.
 An address collection failure shows `DATA ERROR`, not `NO IPv4`.
+
+The `IPv4` row reports the source of that particular address, without querying
+NetworkManager, systemd-networkd, dhclient, or distribution-specific configuration:
+
+- `DHCP` / `STATIC`: an explicit OS-reported method on macOS.
+- `DHCP?`: a finite address lifetime on Linux, suggesting DHCP.
+- `STATIC?`: a permanent address with infinite lifetimes on Linux, suggesting a manual address.
+- `?`: unavailable or ambiguous, including IPv4 link-local addresses on Linux.
+
+Linux reads address flags and lifetimes directly through netlink, without needing
+the `ip` command or elevated privileges. These are heuristics, not proof: manually
+assigned addresses can have finite lifetimes, and DHCP clients can install
+permanent addresses. The trailing `?` is intentional. macOS reads the published
+IPv4 services from `ipconfig getsummary`, matching each method to its addresses;
+unpublished, unsupported, and unrecognized output stays unknown. This macOS debug
+utility has no stable output contract. No network settings or leases are changed.
 
 Each interface page shows its current MAC address in the bottom row, or `MAC ?`
 when the OS reports no hardware address. This can differ from the factory address

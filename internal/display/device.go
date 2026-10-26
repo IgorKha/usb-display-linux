@@ -20,6 +20,7 @@ import (
 type Device struct {
 	file     *os.File
 	Firmware string
+	Rotation int
 }
 
 func ResolvePort(name string) (string, error) {
@@ -140,7 +141,21 @@ func (device *Device) initialize(ctx context.Context, brightness int) error {
 }
 
 func (device *Device) Show(ctx context.Context, frame image.Image) error {
+	if device.Rotation == 180 {
+		frame = rotate180(frame)
+	}
 	return device.operation(ctx, func() error { return WriteFrame(device.file, frame) })
+}
+
+func rotate180(frame image.Image) *image.RGBA {
+	bounds := frame.Bounds()
+	rotated := image.NewRGBA(bounds)
+	for row := bounds.Min.Y; row < bounds.Max.Y; row++ {
+		for column := bounds.Min.X; column < bounds.Max.X; column++ {
+			rotated.Set(column, row, frame.At(bounds.Min.X+bounds.Max.X-1-column, bounds.Min.Y+bounds.Max.Y-1-row))
+		}
+	}
+	return rotated
 }
 
 func (device *Device) Close() error {

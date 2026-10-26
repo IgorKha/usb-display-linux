@@ -10,7 +10,7 @@ import (
 
 func TestParse(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(path, []byte("interval = '5s'\nport = '/dev/test'\nbrightness = 0\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("interval = '5s'\nport = '/dev/test'\nbrightness = 0\nrotation = 180\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	tests := []struct {
@@ -18,10 +18,11 @@ func TestParse(t *testing.T) {
 		args       []string
 		interval   time.Duration
 		brightness int
+		rotation   int
 	}{
-		{name: "file", interval: 5 * time.Second},
-		{name: "explicit default", args: []string{"--interval=3s", "--brightness=30"}, interval: 3 * time.Second, brightness: 30},
-		{name: "override", args: []string{"--interval=1s"}, interval: time.Second},
+		{name: "file", interval: 5 * time.Second, rotation: 180},
+		{name: "explicit default", args: []string{"--interval=3s", "--brightness=30", "--rotation=0"}, interval: 3 * time.Second, brightness: 30},
+		{name: "override", args: []string{"--interval=1s"}, interval: time.Second, rotation: 180},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -30,7 +31,7 @@ func TestParse(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Interval != test.interval || got.Brightness != test.brightness || got.Port != "/dev/test" {
+			if got.Interval != test.interval || got.Brightness != test.brightness || got.Port != "/dev/test" || got.Rotation != test.rotation {
 				t.Fatalf("settings = %+v", got)
 			}
 		})
@@ -45,6 +46,7 @@ func TestParseErrors(t *testing.T) {
 		{name: "invalid", content: "interval = 'tomorrow'"},
 		{name: "brightness", content: "brightness = 101"},
 		{name: "port", content: "port = ''"},
+		{name: "rotation", content: "rotation = 90"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.toml")

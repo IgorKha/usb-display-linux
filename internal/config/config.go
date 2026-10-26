@@ -17,6 +17,7 @@ type Settings struct {
 	Interval   time.Duration
 	Port       string
 	Brightness int
+	Rotation   int
 	Test       bool
 	Version    bool
 }
@@ -25,6 +26,7 @@ type fileSettings struct {
 	Interval   *string `toml:"interval"`
 	Port       *string `toml:"port"`
 	Brightness *int    `toml:"brightness"`
+	Rotation   *int    `toml:"rotation"`
 }
 
 func Parse(args []string, output io.Writer) (Settings, error) {
@@ -35,6 +37,7 @@ func Parse(args []string, output io.Writer) (Settings, error) {
 	interval := flags.String("interval", "3s", "page interval, for example 3s or 500ms")
 	port := flags.String("port", "auto", "serial port or auto (only if one USB CDC candidate exists)")
 	brightness := flags.Int("brightness", 30, "display brightness, 0 to 100")
+	rotation := flags.Int("rotation", 0, "display rotation in degrees: 0 or 180 (manual)")
 	flags.BoolVar(&settings.Test, "test", false, "show a diagnostic frame for five seconds, then exit")
 	flags.BoolVar(&settings.Version, "version", false, "print build information and exit")
 	if err := flags.Parse(args); err != nil {
@@ -70,6 +73,9 @@ func Parse(args []string, output io.Writer) (Settings, error) {
 	if raw.Brightness != nil {
 		settings.Brightness = *raw.Brightness
 	}
+	if raw.Rotation != nil {
+		settings.Rotation = *raw.Rotation
+	}
 	flags.Visit(func(option *flag.Flag) {
 		switch option.Name {
 		case "interval":
@@ -78,6 +84,8 @@ func Parse(args []string, output io.Writer) (Settings, error) {
 			settings.Port = *port
 		case "brightness":
 			settings.Brightness = *brightness
+		case "rotation":
+			settings.Rotation = *rotation
 		}
 	})
 	settings.Interval, err = time.ParseDuration(resolvedInterval)
@@ -89,6 +97,9 @@ func Parse(args []string, output io.Writer) (Settings, error) {
 	}
 	if settings.Brightness < 0 || settings.Brightness > 100 {
 		return settings, errors.New("brightness must be between 0 and 100")
+	}
+	if settings.Rotation != 0 && settings.Rotation != 180 {
+		return settings, errors.New("rotation must be 0 or 180")
 	}
 	return settings, nil
 }

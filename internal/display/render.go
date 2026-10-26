@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"net/netip"
 	"strings"
 	"unicode"
 
@@ -23,6 +24,7 @@ type Page struct {
 	Status       string
 	Address      string
 	HardwareAddr string
+	Source       string
 	Up           bool
 }
 
@@ -95,7 +97,11 @@ func (renderer *Renderer) Pages(osName string, interfaces []monitor.Interface) [
 		}
 		hardwareLines := wrap(hardwareAddr, renderer.medium)
 		for _, address := range addresses {
-			for start := 0; start < len(titles); start += 2 {
+			source := ""
+			if parsed, err := netip.ParseAddr(address); err == nil {
+				source = iface.Sources[parsed].String()
+			}
+			for start := 0; start < len(titles); start++ {
 				for part, hardwareLine := range hardwareLines {
 					key := fmt.Sprintf("if:%s:%s:%d", iface.Name, address, start)
 					if part > 0 {
@@ -103,10 +109,11 @@ func (renderer *Renderer) Pages(osName string, interfaces []monitor.Interface) [
 					}
 					pages = append(pages, Page{
 						Key:          key,
-						Title:        titles[start:min(start+2, len(titles))],
+						Title:        titles[start : start+1],
 						Status:       state + "   LINK " + iface.Link.String(),
 						Address:      address,
 						HardwareAddr: hardwareLine,
+						Source:       source,
 						Up:           iface.Up,
 					})
 				}
@@ -131,6 +138,9 @@ func (renderer *Renderer) Render(page Page, position, total int) *image.RGBA {
 		text(renderer.normal, 13+index*13, title, accent)
 	}
 	if page.Address != "" {
+		if page.Source != "" {
+			text(renderer.normal, 27, "IPv4 "+page.Source, accent)
+		}
 		stateColor := color.RGBA{R: 245, G: 148, B: 87, A: 255}
 		if page.Up {
 			stateColor = color.RGBA{R: 128, G: 220, B: 137, A: 255}
@@ -147,7 +157,7 @@ func (renderer *Renderer) Render(page Page, position, total int) *image.RGBA {
 		counter = fmt.Sprintf("%d/%d", position+1, total)
 		drawer := font.Drawer{
 			Dst: frame, Src: image.NewUniform(accent), Face: renderer.small,
-			Dot: fixed.P(Width-4-font.MeasureString(renderer.small, counter).Ceil(), 41),
+			Dot: fixed.P(Width-4-font.MeasureString(renderer.small, counter).Ceil(), 27),
 		}
 		drawer.DrawString(counter)
 	} else {

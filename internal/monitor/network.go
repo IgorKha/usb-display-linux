@@ -35,6 +35,7 @@ type Interface struct {
 	Up           bool
 	Link         Link
 	Addresses    []netip.Addr
+	Sources      map[netip.Addr]AddressSource
 	AddressError bool
 }
 
@@ -46,7 +47,9 @@ func CollectNetwork(ctx context.Context) ([]Interface, error) {
 		return nil, fmt.Errorf("list interfaces: %w", err)
 	}
 	links := collectLinks(ctx, interfaces)
-	return collectInterfaces(interfaces, func(iface net.Interface) ([]net.Addr, error) { return iface.Addrs() }, links), nil
+	result := collectInterfaces(interfaces, func(iface net.Interface) ([]net.Addr, error) { return iface.Addrs() }, links)
+	collectAddressSources(ctx, result)
+	return result, nil
 }
 
 func collectInterfaces(interfaces []net.Interface, addresses func(net.Interface) ([]net.Addr, error), links map[string]Link) []Interface {
@@ -61,6 +64,7 @@ func collectInterfaces(interfaces []net.Interface, addresses func(net.Interface)
 			Up:           iface.Flags&net.FlagUp != 0,
 			Link:         links[iface.Name],
 			Addresses:    []netip.Addr{},
+			Sources:      map[netip.Addr]AddressSource{},
 		}
 		values, err := addresses(iface)
 		item.AddressError = err != nil

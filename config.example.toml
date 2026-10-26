@@ -1,3 +1,4 @@
 interval = "3s"
 port = "auto"
 brightness = 30
+rotation = 0

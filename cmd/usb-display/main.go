@@ -64,6 +64,7 @@ func execute(ctx context.Context, settings config.Settings, stderr io.Writer) (r
 		return err
 	}
 	defer func() { result = errors.Join(result, device.Close()) }()
+	device.Rotation = settings.Rotation
 	fmt.Fprintf(stderr, "display %s, firmware %q, interval %s\n", name, device.Firmware, settings.Interval)
 	if settings.Test {
 		if err := device.Show(ctx, renderer.TestPattern()); err != nil {
